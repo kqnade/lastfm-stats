@@ -1,0 +1,13 @@
+{
+  "name": "lastfm-stats",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "generate": "tsx scripts/generate.ts"
+  },
+  "devDependencies": {
+    "@types/node": "^20",
+    "tsx": "^4.21.0",
+    "typescript": "^5"
+  }
+}
