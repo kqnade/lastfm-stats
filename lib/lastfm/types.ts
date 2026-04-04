@@ -23,6 +23,7 @@ export interface LastfmTrack {
 
 export interface LastfmArtist {
   name: string;
+  mbid: string;
   playcount: string;
   url: string;
   image: LastfmImage[];

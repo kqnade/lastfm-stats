@@ -5,6 +5,7 @@ import { getTopTracks, getTopArtists, getUserInfo, getWeeklyTrackChart, getTrack
 import type { Period, ProcessedTrack, ProcessedArtist, ProcessedStats } from "../lib/lastfm/types";
 import { generateTopTracksCard, generateTopArtistsCard, generateStatsCard } from "../lib/svg/templates";
 import { imageUrlToBase64, getLastfmImageUrl } from "../lib/svg/utils";
+import { getArtistImageUrl } from "../lib/deezer/api";
 
 const USERNAME = process.env.LASTFM_USERNAME;
 const PERIOD = (process.env.LASTFM_PERIOD ?? "7day") as Period;
@@ -58,7 +59,10 @@ async function generateTopArtists() {
 
   const processed: ProcessedArtist[] = await Promise.all(
     rawArtists.map(async (artist, i) => {
-      const imageUrl = getLastfmImageUrl(artist.image, "medium");
+      let imageUrl = getLastfmImageUrl(artist.image, "medium");
+      if (!imageUrl) {
+        imageUrl = await getArtistImageUrl(artist.name);
+      }
       const imageBase64 = imageUrl ? await imageUrlToBase64(imageUrl) : null;
       return {
         rank: i + 1,
@@ -123,11 +127,9 @@ async function generateStats() {
 async function main() {
   console.log("=== Last.fm Stats SVG Generator ===\n");
 
-  await Promise.all([
-    generateTopTracks(),
-    generateTopArtists(),
-    generateStats(),
-  ]);
+  await generateTopTracks();
+  await generateTopArtists();
+  await generateStats();
 
   console.log("\nDone!");
 }

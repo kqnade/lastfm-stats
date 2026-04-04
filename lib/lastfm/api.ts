@@ -10,7 +10,7 @@ import type {
 const BASE_URL = "http://ws.audioscrobbler.com/2.0/";
 const API_KEY = process.env.LASTFM_API_KEY!;
 
-async function fetchLastfm<T>(params: Record<string, string>): Promise<T> {
+async function fetchLastfm<T>(params: Record<string, string>, retries = 3): Promise<T> {
   const url = new URL(BASE_URL);
   url.searchParams.set("api_key", API_KEY);
   url.searchParams.set("format", "json");
@@ -18,15 +18,23 @@ async function fetchLastfm<T>(params: Record<string, string>): Promise<T> {
     url.searchParams.set(key, value);
   }
 
-  const res = await fetch(url.toString());
-  if (!res.ok) {
-    throw new Error(`Last.fm API error: ${res.status} ${res.statusText}`);
+  for (let attempt = 0; attempt < retries; attempt++) {
+    try {
+      const res = await fetch(url.toString());
+      if (!res.ok) {
+        throw new Error(`Last.fm API error: ${res.status} ${res.statusText}`);
+      }
+      const data = (await res.json()) as T & { error?: number; message?: string };
+      if (data.error) {
+        throw new Error(`Last.fm API error ${data.error}: ${data.message}`);
+      }
+      return data;
+    } catch (err) {
+      if (attempt === retries - 1) throw err;
+      await new Promise((r) => setTimeout(r, 1000 * (attempt + 1)));
+    }
   }
-  const data = (await res.json()) as T & { error?: number; message?: string };
-  if (data.error) {
-    throw new Error(`Last.fm API error ${data.error}: ${data.message}`);
-  }
-  return data;
+  throw new Error("unreachable");
 }
 
 export async function getTopTracks(
