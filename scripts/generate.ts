@@ -1,7 +1,7 @@
 import { writeFileSync, mkdirSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
-import { getTopTracks, getTopArtists, getUserInfo, getWeeklyTrackChart, isTrackLoved } from "../lib/lastfm/api";
+import { getTopTracks, getTopArtists, getUserInfo, getWeeklyTrackChart, getTrackDetails } from "../lib/lastfm/api";
 import type { Period, ProcessedTrack, ProcessedArtist, ProcessedStats } from "../lib/lastfm/types";
 import { generateTopTracksCard, generateTopArtistsCard, generateStatsCard } from "../lib/svg/templates";
 import { imageUrlToBase64, getLastfmImageUrl } from "../lib/svg/utils";
@@ -30,11 +30,10 @@ async function generateTopTracks() {
 
   const processed: ProcessedTrack[] = await Promise.all(
     rawTracks.map(async (track, i) => {
-      const imageUrl = getLastfmImageUrl(track.image, "medium");
-      const [imageBase64, loved] = await Promise.all([
-        imageUrl ? imageUrlToBase64(imageUrl) : Promise.resolve(null),
-        isTrackLoved(USERNAME!, track.name, track.artist.name),
-      ]);
+      const details = await getTrackDetails(USERNAME!, track.name, track.artist.name);
+      // Use album art from track.getInfo (user.getTopTracks only returns placeholder)
+      const imageUrl = getLastfmImageUrl(details.albumImages, "medium");
+      const imageBase64 = imageUrl ? await imageUrlToBase64(imageUrl) : null;
       return {
         rank: i + 1,
         name: track.name,
@@ -42,7 +41,7 @@ async function generateTopTracks() {
         playcount: parseInt(track.playcount, 10),
         imageUrl,
         imageBase64,
-        loved,
+        loved: details.loved,
         url: track.url,
       };
     })

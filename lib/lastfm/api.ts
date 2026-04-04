@@ -1,5 +1,6 @@
 import type {
   Period,
+  LastfmImage,
   LastfmTrack,
   LastfmArtist,
   LastfmUserInfo,
@@ -80,20 +81,33 @@ export async function getWeeklyTrackChart(
   return data.weeklytrackchart;
 }
 
-export async function isTrackLoved(
+export interface TrackDetails {
+  loved: boolean;
+  albumImages: LastfmImage[];
+}
+
+export async function getTrackDetails(
   username: string,
   track: string,
   artist: string
-): Promise<boolean> {
+): Promise<TrackDetails> {
   try {
-    const data = await fetchLastfm<{ track: { userloved: string } }>({
+    const data = await fetchLastfm<{
+      track: {
+        userloved: string;
+        album?: { image: LastfmImage[] };
+      };
+    }>({
       method: "track.getInfo",
       username,
       track,
       artist,
     });
-    return data.track?.userloved === "1";
+    return {
+      loved: data.track?.userloved === "1",
+      albumImages: data.track?.album?.image ?? [],
+    };
   } catch {
-    return false;
+    return { loved: false, albumImages: [] };
   }
 }

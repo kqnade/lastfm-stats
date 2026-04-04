@@ -32,14 +32,21 @@ export async function imageUrlToBase64(url: string): Promise<string | null> {
   }
 }
 
+// Last.fm returns this hash for all placeholder/default images
+const LASTFM_PLACEHOLDER_HASH = "2a96cbd8b46e442fc41c2b86b821562f";
+
+function isPlaceholderUrl(url: string): boolean {
+  return url.includes(LASTFM_PLACEHOLDER_HASH);
+}
+
 export function getLastfmImageUrl(
   images: Array<{ "#text": string; size: string }>,
   preferredSize = "medium"
 ): string {
-  const preferred = images.find((img) => img.size === preferredSize && img["#text"]);
+  const preferred = images.find((img) => img.size === preferredSize && img["#text"] && !isPlaceholderUrl(img["#text"]));
   if (preferred) return preferred["#text"];
-  // Fallback: largest non-empty
-  const fallback = [...images].reverse().find((img) => img["#text"]);
+  // Fallback: largest non-empty, non-placeholder
+  const fallback = [...images].reverse().find((img) => img["#text"] && !isPlaceholderUrl(img["#text"]));
   return fallback?.["#text"] ?? "";
 }
 
