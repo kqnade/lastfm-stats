@@ -20,6 +20,7 @@ export function formatCount(count: number): string {
   return String(count);
 }
 
+/** Embed supported raster images, optionally deduplicating and caching downloads. */
 export async function imageUrlToBase64(url: string, cache?: BuildCache): Promise<string | null> {
   if (cache && url) {
     return cache.remember("image-v1:" + url, WEEK_MS, () => imageUrlToBase64(url));

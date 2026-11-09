@@ -11,6 +11,7 @@ export interface CalendarOptions {
   theme?: string;
 }
 
+/** Render a self-contained activity grid with relative intensity and daily tooltips. */
 export function generateCalendarCard(options: CalendarOptions): string {
   const { username, counts, start, end, timeZone, theme = "dark" } = options;
   const colors = getTheme(theme);

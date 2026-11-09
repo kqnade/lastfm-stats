@@ -11,6 +11,7 @@ interface DeezerSearchResult {
   data: DeezerArtist[];
 }
 
+/** Retry temporary HTTP/network failures with a timeout and bounded backoff. */
 async function fetchWithRetry(url: string, retries = 3): Promise<Response | null> {
   for (let attempt = 0; attempt < retries; attempt++) {
     try {
@@ -25,6 +26,7 @@ async function fetchWithRetry(url: string, retries = 3): Promise<Response | null
   return null;
 }
 
+/** Return a small exact-match portrait, optionally reusing a seven-day cache. */
 export async function getArtistImageUrl(artistName: string, cache?: BuildCache): Promise<string> {
   if (!artistName) return "";
   if (cache) {

@@ -9,6 +9,7 @@ interface History {
   counts: Record<string, number>;
 }
 
+/** Replace recent days, including deletions; rebuild all days weekly or on a cache miss. */
 export async function getCachedDailyScrobbles(
   cache: BuildCache, username: string, start: string, end: string,
   timeZone: string, now: Date,

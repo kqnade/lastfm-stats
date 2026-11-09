@@ -1,6 +1,7 @@
 const DAY_MS = 86_400_000;
 const formatters = new Map<string, Intl.DateTimeFormat>();
 
+/** Format a timestamp as a calendar date in an IANA timezone; reuse formatters. */
 export function dateKey(date: Date, timeZone: string): string {
   let formatter = formatters.get(timeZone);
   if (!formatter) {
@@ -14,11 +15,12 @@ export function dateKey(date: Date, timeZone: string): string {
   return `${value("year")}-${value("month")}-${value("day")}`;
 }
 
-// Calendar arithmetic uses UTC dates so DST cannot skip or repeat a day.
+/** Shift an ISO calendar date using UTC arithmetic, avoiding DST gaps/repeats. */
 export function shiftDate(key: string, days: number): string {
   return new Date(Date.parse(`${key}T00:00:00Z`) + days * DAY_MS).toISOString().slice(0, 10);
 }
 
+/** Return today and the preceding 364 calendar days in the selected timezone. */
 export function calendarRange(now: Date, timeZone: string) {
   const end = dateKey(now, timeZone);
   return { start: shiftDate(end, -364), end };

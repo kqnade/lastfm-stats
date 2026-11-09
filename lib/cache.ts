@@ -8,6 +8,7 @@ export class BuildCache {
   private entries = new Map<string, Entry>();
   private pending = new Map<string, Promise<unknown>>();
 
+  /** Restore unexpired entries; unreadable or corrupt cache files are disposable. */
   constructor(private file: string, private clock = Date.now) {
     try {
       const data = JSON.parse(readFileSync(file, "utf8"));
@@ -21,16 +22,19 @@ export class BuildCache {
     } catch { this.entries.clear(); }
   }
 
+  /** Read only entries whose TTL has not elapsed. */
   get<T>(key: string): T | undefined {
     const entry = this.entries.get(key);
     if (!entry || entry.expires <= this.clock()) return undefined;
     return entry.value as T;
   }
 
+  /** Store a value with an expiry measured from the injected clock. */
   set<T>(key: string, value: T, ttl: number): void {
     this.entries.set(key, { value, expires: this.clock() + ttl });
   }
 
+  /** Share in-flight requests and cache successful nonempty values for the TTL. */
   async remember<T>(key: string, ttl: number, fetchValue: () => Promise<T>): Promise<T> {
     const cached = this.get<T>(key);
     if (cached !== undefined) return cached;
@@ -45,6 +49,7 @@ export class BuildCache {
     return task;
   }
 
+  /** Atomically persist at most 256 live entries after successful generation. */
   save(): void {
     const entries = [...this.entries].filter(([, entry]) => entry.expires > this.clock()).slice(-256);
     mkdirSync(dirname(this.file), { recursive: true });

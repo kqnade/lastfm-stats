@@ -11,7 +11,7 @@ import { dateKey } from "./calendar";
 interface RecentTracksPage {
   recenttracks: {
     track: Array<{ date?: { uts: string }; "@attr"?: { nowplaying?: string } }>;
-    "@attr": { totalPages: string };
+    "@attr": { totalPages: string; total: string };
   };
 }
 
@@ -25,6 +25,7 @@ export async function getDailyScrobbles(
   const to = Math.floor(now.getTime() / 1000);
   const counts: Record<string, number> = {};
   let pages = 1;
+  let expectedTotal: number | undefined;
   for (let page = 1; page <= pages; page++) {
     const data = await fetchLastfm<RecentTracksPage>({
       method: "user.getRecentTracks", user: username, limit: "200",
@@ -32,12 +33,18 @@ export async function getDailyScrobbles(
     });
     const tracks = data.recenttracks?.track;
     const totalPages = Number(data.recenttracks?.["@attr"]?.totalPages);
-    if (!Array.isArray(tracks) || !Number.isInteger(totalPages) || totalPages < 0) {
+    const total = Number(data.recenttracks?.["@attr"]?.total);
+    if (!Array.isArray(tracks) || !Number.isInteger(totalPages) || totalPages < 0
+      || !Number.isSafeInteger(total) || total < 0) {
       throw new Error("Invalid Last.fm recent-tracks response");
     }
-    if (page > 1 && Math.max(1, totalPages) !== pages) {
+    if (page > 1 && (Math.max(1, totalPages) !== pages || total !== expectedTotal)) {
       throw new Error("Last.fm history changed during pagination; retry generation");
     }
+    if (totalPages > 1 && !tracks.some((track) => track["@attr"]?.nowplaying !== "true")) {
+      throw new Error("Empty Last.fm history page");
+    }
+    expectedTotal = total;
     pages = Math.max(1, totalPages);
     for (const track of tracks) {
       if (track["@attr"]?.nowplaying === "true") continue;
@@ -55,6 +62,7 @@ export async function getDailyScrobbles(
 const BASE_URL = "https://ws.audioscrobbler.com/2.0/";
 const API_KEY = process.env.LASTFM_API_KEY!;
 
+/** Fetch JSON with a timeout and bounded retries for transient API failures. */
 async function fetchLastfm<T>(params: Record<string, string>, retries = 3): Promise<T> {
   const url = new URL(BASE_URL);
   url.searchParams.set("api_key", API_KEY);
