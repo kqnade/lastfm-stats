@@ -6,6 +6,9 @@ import type { Period, ProcessedTrack, ProcessedArtist, ProcessedStats } from "..
 import { generateTopTracksCard, generateTopArtistsCard, generateStatsCard } from "../lib/svg/templates";
 import { imageUrlToBase64, getLastfmImageUrl } from "../lib/svg/utils";
 import { getArtistImageUrl } from "../lib/deezer/api";
+import { getDailyScrobbles } from "../lib/lastfm/api";
+import { calendarRange } from "../lib/lastfm/calendar";
+import { generateCalendarCard } from "../lib/svg/calendar";
 
 const USERNAME = process.env.LASTFM_USERNAME;
 const PERIOD = (process.env.LASTFM_PERIOD ?? "7day") as Period;
@@ -130,6 +133,16 @@ async function main() {
   await generateTopTracks();
   await generateTopArtists();
   await generateStats();
+  const timeZone = process.env.LASTFM_TIMEZONE ?? "Asia/Tokyo";
+  const now = new Date();
+  const range = calendarRange(now, timeZone);
+  console.log("Fetching listening activity for the last 365 days...");
+  const counts = await getDailyScrobbles(USERNAME!, range.start, range.end, timeZone, now);
+  const calendar = generateCalendarCard({
+    username: USERNAME!, counts, ...range, timeZone, theme: THEME,
+  });
+  writeFileSync(join(OUTPUT_DIR, "calendar.svg"), calendar);
+  console.log("  -> output/calendar.svg");
 
   console.log("\nDone!");
 }

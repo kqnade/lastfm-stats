@@ -8,9 +8,14 @@ on:
 permissions:
   contents: write
 
+concurrency:
+  group: lastfm-stats-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   update:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v7
 
@@ -28,6 +33,7 @@ jobs:
           LASTFM_USERNAME: ${{ secrets.LASTFM_USERNAME }}
           LASTFM_PERIOD: "7day"
           LASTFM_THEME: "dark"
+          LASTFM_TIMEZONE: "Asia/Tokyo"
 
       - name: Commit and push
         run: |
