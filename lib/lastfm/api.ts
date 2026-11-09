@@ -6,10 +6,63 @@ import type {
   LastfmUserInfo,
   LastfmWeeklyTrackChart,
 } from "./types";
+import { dateKey } from "./calendar";
 
-const BASE_URL = "http://ws.audioscrobbler.com/2.0/";
+interface RecentTracksPage {
+  recenttracks: {
+    track: Array<{ date?: { uts: string }; "@attr"?: { nowplaying?: string } }>;
+    "@attr": { totalPages: string; total: string };
+  };
+}
+
+/** Fetch every page in a fixed time window; never publish a partial calendar. */
+export async function getDailyScrobbles(
+  username: string, start: string, end: string, timeZone: string,
+  now = new Date(),
+): Promise<Record<string, number>> {
+  // Widen the UTC lower bound to include midnight in any IANA timezone.
+  const from = Math.floor(Date.parse(`${start}T00:00:00Z`) / 1000) - 86_400;
+  const to = Math.floor(now.getTime() / 1000);
+  const counts: Record<string, number> = {};
+  let pages = 1;
+  let expectedTotal: number | undefined;
+  for (let page = 1; page <= pages; page++) {
+    const data = await fetchLastfm<RecentTracksPage>({
+      method: "user.getRecentTracks", user: username, limit: "200",
+      page: String(page), from: String(from), to: String(to),
+    });
+    const tracks = data.recenttracks?.track;
+    const totalPages = Number(data.recenttracks?.["@attr"]?.totalPages);
+    const total = Number(data.recenttracks?.["@attr"]?.total);
+    if (!Array.isArray(tracks) || !Number.isInteger(totalPages) || totalPages < 0
+      || !Number.isSafeInteger(total) || total < 0) {
+      throw new Error("Invalid Last.fm recent-tracks response");
+    }
+    if (page > 1 && (Math.max(1, totalPages) !== pages || total !== expectedTotal)) {
+      throw new Error("Last.fm history changed during pagination; retry generation");
+    }
+    if (totalPages > 1 && !tracks.some((track) => track["@attr"]?.nowplaying !== "true")) {
+      throw new Error("Empty Last.fm history page");
+    }
+    expectedTotal = total;
+    pages = Math.max(1, totalPages);
+    for (const track of tracks) {
+      if (track["@attr"]?.nowplaying === "true") continue;
+      const timestamp = Number(track.date?.uts);
+      if (!Number.isFinite(timestamp)) throw new Error("Scrobble is missing a timestamp");
+      if (timestamp > to) continue;
+      const key = dateKey(new Date(timestamp * 1000), timeZone);
+      if (key >= start && key <= end) counts[key] = (counts[key] ?? 0) + 1;
+    }
+    if (page < pages) await new Promise((resolve) => setTimeout(resolve, 250));
+  }
+  return counts;
+}
+
+const BASE_URL = "https://ws.audioscrobbler.com/2.0/";
 const API_KEY = process.env.LASTFM_API_KEY!;
 
+/** Fetch JSON with a timeout and bounded retries for transient API failures. */
 async function fetchLastfm<T>(params: Record<string, string>, retries = 3): Promise<T> {
   const url = new URL(BASE_URL);
   url.searchParams.set("api_key", API_KEY);
@@ -20,7 +73,7 @@ async function fetchLastfm<T>(params: Record<string, string>, retries = 3): Prom
 
   for (let attempt = 0; attempt < retries; attempt++) {
     try {
-      const res = await fetch(url.toString());
+      const res = await fetch(url.toString(), { signal: AbortSignal.timeout(30_000) });
       if (!res.ok) {
         throw new Error(`Last.fm API error: ${res.status} ${res.statusText}`);
       }

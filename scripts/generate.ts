@@ -6,6 +6,10 @@ import type { Period, ProcessedTrack, ProcessedArtist, ProcessedStats } from "..
 import { generateTopTracksCard, generateTopArtistsCard, generateStatsCard } from "../lib/svg/templates";
 import { imageUrlToBase64, getLastfmImageUrl } from "../lib/svg/utils";
 import { getArtistImageUrl } from "../lib/deezer/api";
+import { BuildCache } from "../lib/cache";
+import { getCachedDailyScrobbles } from "../lib/lastfm/history";
+import { calendarRange } from "../lib/lastfm/calendar";
+import { generateCalendarCard } from "../lib/svg/calendar";
 
 const USERNAME = process.env.LASTFM_USERNAME;
 const PERIOD = (process.env.LASTFM_PERIOD ?? "7day") as Period;
@@ -13,6 +17,7 @@ const THEME = process.env.LASTFM_THEME ?? "dark";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const OUTPUT_DIR = join(__dirname, "..", "output");
+const cache = new BuildCache(join(__dirname, "..", ".cache", "lastfm.json"));
 
 if (!USERNAME) {
   console.error("LASTFM_USERNAME is required");
@@ -34,7 +39,7 @@ async function generateTopTracks() {
       const details = await getTrackDetails(USERNAME!, track.name, track.artist.name);
       // Use album art from track.getInfo (user.getTopTracks only returns placeholder)
       const imageUrl = getLastfmImageUrl(details.albumImages, "medium");
-      const imageBase64 = imageUrl ? await imageUrlToBase64(imageUrl) : null;
+      const imageBase64 = imageUrl ? await imageUrlToBase64(imageUrl, cache) : null;
       return {
         rank: i + 1,
         name: track.name,
@@ -61,9 +66,9 @@ async function generateTopArtists() {
     rawArtists.map(async (artist, i) => {
       let imageUrl = getLastfmImageUrl(artist.image, "medium");
       if (!imageUrl) {
-        imageUrl = await getArtistImageUrl(artist.name);
+        imageUrl = await getArtistImageUrl(artist.name, cache);
       }
-      const imageBase64 = imageUrl ? await imageUrlToBase64(imageUrl) : null;
+      const imageBase64 = imageUrl ? await imageUrlToBase64(imageUrl, cache) : null;
       return {
         rank: i + 1,
         name: artist.name,
@@ -101,7 +106,7 @@ async function generateStats() {
     : 0;
 
   const avatarUrl = getLastfmImageUrl(userInfo.image, "medium");
-  const avatarBase64 = avatarUrl ? await imageUrlToBase64(avatarUrl) : null;
+  const avatarBase64 = avatarUrl ? await imageUrlToBase64(avatarUrl, cache) : null;
 
   const registeredTs = parseInt(userInfo.registered.unixtime, 10);
   const registeredDate = new Date(registeredTs * 1000).toLocaleDateString("en-US", {
@@ -130,7 +135,18 @@ async function main() {
   await generateTopTracks();
   await generateTopArtists();
   await generateStats();
+  const timeZone = process.env.LASTFM_TIMEZONE ?? "Asia/Tokyo";
+  const now = new Date();
+  const range = calendarRange(now, timeZone);
+  console.log("Fetching listening activity for the last 365 days...");
+  const counts = await getCachedDailyScrobbles(cache, USERNAME!, range.start, range.end, timeZone, now);
+  const calendar = generateCalendarCard({
+    username: USERNAME!, counts, ...range, timeZone, theme: THEME,
+  });
+  writeFileSync(join(OUTPUT_DIR, "calendar.svg"), calendar);
+  console.log("  -> output/calendar.svg");
 
+  cache.save();
   console.log("\nDone!");
 }
 
