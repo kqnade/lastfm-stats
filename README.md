@@ -22,6 +22,11 @@ Older edits are picked up on the next weekly refresh. Large histories take more 
 requests (up to 200 scrobbles per page). API failures fail the workflow before
 its commit step, preserving the previously published SVGs.
 
+History is fetched in fixed windows of at most seven days. If page counts or
+total scrobbles change, or a multipage response contains an empty page, only
+that window is retried from page one (up to three attempts). Partial attempts
+are discarded. Persistently inconsistent responses still fail the run.
+
 ## Configuration
 
 Set repository Actions secrets `LASTFM_API_KEY` and `LASTFM_USERNAME`.
