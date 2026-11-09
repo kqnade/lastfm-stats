@@ -15,21 +15,47 @@ interface RecentTracksPage {
   };
 }
 
-/** Fetch every page in a fixed time window; never publish a partial calendar. */
+class HistoryChangedError extends Error {}
+
+/** Fetch bounded weekly windows and retry only an inconsistent window. */
 export async function getDailyScrobbles(
   username: string, start: string, end: string, timeZone: string,
   now = new Date(),
 ): Promise<Record<string, number>> {
-  // Widen the UTC lower bound to include midnight in any IANA timezone.
-  const from = Math.floor(Date.parse(`${start}T00:00:00Z`) / 1000) - 86_400;
-  const to = Math.floor(now.getTime() / 1000);
+  // Widen calendar bounds for all IANA offsets, then filter by local date.
+  const first = Math.floor(Date.parse(`${start}T00:00:00Z`) / 1000) - 86_400;
+  const last = Math.min(Math.floor(now.getTime() / 1000) + 1,
+    Math.floor(Date.parse(`${end}T00:00:00Z`) / 1000) + 2 * 86_400);
+  const counts: Record<string, number> = {};
+  for (let from = first; from < last; from += 7 * 86_400) {
+    const to = Math.min(from + 7 * 86_400, last);
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        const window = await fetchHistoryWindow(username, start, end, timeZone, from, to);
+        for (const [day, count] of Object.entries(window)) counts[day] = (counts[day] ?? 0) + count;
+        break;
+      } catch (error) {
+        if (!(error instanceof HistoryChangedError) || attempt === 2) throw error;
+        console.warn(`Retrying history window ${from}..${to}: ${error.message} (attempt ${attempt + 2}/3)`);
+        await new Promise((resolve) => setTimeout(resolve, 500 * (attempt + 1)));
+      }
+    }
+    if (to < last) await new Promise((resolve) => setTimeout(resolve, 250));
+  }
+  return counts;
+}
+
+/** Collect one [from, to) window atomically; discard partial counts on failure. */
+async function fetchHistoryWindow(
+  username: string, start: string, end: string, timeZone: string, from: number, to: number,
+): Promise<Record<string, number>> {
   const counts: Record<string, number> = {};
   let pages = 1;
   let expectedTotal: number | undefined;
   for (let page = 1; page <= pages; page++) {
     const data = await fetchLastfm<RecentTracksPage>({
       method: "user.getRecentTracks", user: username, limit: "200",
-      page: String(page), from: String(from), to: String(to),
+      page: String(page), from: String(from - 1), to: String(to),
     });
     const tracks = data.recenttracks?.track;
     const totalPages = Number(data.recenttracks?.["@attr"]?.totalPages);
@@ -39,10 +65,10 @@ export async function getDailyScrobbles(
       throw new Error("Invalid Last.fm recent-tracks response");
     }
     if (page > 1 && (Math.max(1, totalPages) !== pages || total !== expectedTotal)) {
-      throw new Error("Last.fm history changed during pagination; retry generation");
+      throw new HistoryChangedError(`Last.fm history changed during pagination: pages ${pages} -> ${totalPages}, total ${expectedTotal} -> ${total}`);
     }
     if (totalPages > 1 && !tracks.some((track) => track["@attr"]?.nowplaying !== "true")) {
-      throw new Error("Empty Last.fm history page");
+      throw new HistoryChangedError("Empty Last.fm history page");
     }
     expectedTotal = total;
     pages = Math.max(1, totalPages);
@@ -50,7 +76,7 @@ export async function getDailyScrobbles(
       if (track["@attr"]?.nowplaying === "true") continue;
       const timestamp = Number(track.date?.uts);
       if (!Number.isFinite(timestamp)) throw new Error("Scrobble is missing a timestamp");
-      if (timestamp > to) continue;
+      if (timestamp < from || timestamp >= to) continue;
       const key = dateKey(new Date(timestamp * 1000), timeZone);
       if (key >= start && key <= end) counts[key] = (counts[key] ?? 0) + 1;
     }

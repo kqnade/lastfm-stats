@@ -47,7 +47,7 @@ test("history total changes are rejected even when page count stays the same", a
   let page = 0;
   t.mock.method(globalThis, "fetch", async () => Response.json({
     recenttracks: { track: [{ date: { uts: "0" } }],
-      "@attr": { totalPages: "2", total: String(++page === 1 ? 201 : 202) } },
+      "@attr": { totalPages: "2", total: String(++page % 2 === 1 ? 201 : 202) } },
   }));
   await assert.rejects(getDailyScrobbles("test", "2026-01-01", "2026-01-01", "UTC"), /changed during pagination/);
 });
@@ -59,7 +59,7 @@ test("multipage history rejects empty first, last, and now-playing-only pages", 
       let page = 0;
       mock.mock.mockImplementation(async () => Response.json({
         recenttracks: {
-          track: ++page === emptyPage ? emptyTracks : [{ date: { uts: "0" } }],
+          track: (emptyPage === 1 || ++page % 2 === 0) ? emptyTracks : [{ date: { uts: "0" } }],
           "@attr": { totalPages: "2", total: "201" },
         },
       }));
@@ -112,7 +112,7 @@ test("empty API history is valid; malformed pagination fails", async (t) => {
 test("changing page totals fail instead of publishing partial history", async (t) => {
   let page = 0;
   t.mock.method(globalThis, "fetch", async () => Response.json({
-    recenttracks: { track: [{ date: { uts: "0" } }], "@attr": { totalPages: String(++page === 1 ? 2 : 3), total: "3" } },
+    recenttracks: { track: [{ date: { uts: "0" } }], "@attr": { totalPages: String(++page % 2 === 1 ? 2 : 3), total: "3" } },
   }));
   await assert.rejects(getDailyScrobbles("test", "2026-01-01", "2026-01-01", "UTC"), /changed during pagination/);
 });
