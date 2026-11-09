@@ -24,6 +24,14 @@ jobs:
           node-version: 24
           cache: npm
 
+      - name: Restore image and history cache
+        uses: actions/cache@v6
+        with:
+          path: .cache/
+          key: lastfm-v1-${{ runner.os }}-${{ github.ref_name }}-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: |
+            lastfm-v1-${{ runner.os }}-${{ github.ref_name }}-
+
       - run: npm ci
 
       - name: Generate SVGs

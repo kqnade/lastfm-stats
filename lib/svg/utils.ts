@@ -1,3 +1,5 @@
+import { BuildCache, WEEK_MS } from "../cache";
+
 export function escapeXml(str: string): string {
   return str
     .replace(/&/g, "&amp;")
@@ -18,12 +20,16 @@ export function formatCount(count: number): string {
   return String(count);
 }
 
-export async function imageUrlToBase64(url: string): Promise<string | null> {
+export async function imageUrlToBase64(url: string, cache?: BuildCache): Promise<string | null> {
+  if (cache && url) {
+    return cache.remember("image-v1:" + url, WEEK_MS, () => imageUrlToBase64(url));
+  }
   if (!url) return null;
   try {
-    const res = await fetch(url);
+    const res = await fetch(url, { signal: AbortSignal.timeout(15_000) });
     if (!res.ok) return null;
-    const contentType = res.headers.get("content-type") ?? "image/jpeg";
+    const contentType = res.headers.get("content-type")?.split(";")[0].trim().toLowerCase();
+    if (!contentType || !["image/jpeg", "image/png", "image/webp", "image/gif"].includes(contentType)) return null;
     const buffer = await res.arrayBuffer();
     const base64 = Buffer.from(buffer).toString("base64");
     return `data:${contentType};base64,${base64}`;

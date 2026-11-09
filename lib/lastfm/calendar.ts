@@ -1,9 +1,15 @@
 const DAY_MS = 86_400_000;
+const formatters = new Map<string, Intl.DateTimeFormat>();
 
 export function dateKey(date: Date, timeZone: string): string {
-  const parts = new Intl.DateTimeFormat("en-US", {
-    timeZone, year: "numeric", month: "2-digit", day: "2-digit",
-  }).formatToParts(date);
+  let formatter = formatters.get(timeZone);
+  if (!formatter) {
+    formatter = new Intl.DateTimeFormat("en-US", {
+      timeZone, year: "numeric", month: "2-digit", day: "2-digit",
+    });
+    formatters.set(timeZone, formatter);
+  }
+  const parts = formatter.formatToParts(date);
   const value = (type: string) => parts.find((part) => part.type === type)!.value;
   return `${value("year")}-${value("month")}-${value("day")}`;
 }

@@ -16,7 +16,9 @@ Unplayed days remain empty. The current day is partial.
 
 The generator uses `user.getRecentTracks`, fetches all pages in a fixed time
 window, and excludes the currently playing track. It rebuilds the full range
-each run so old scrobble edits are reflected. Large histories take more API
+on the first run and weekly thereafter. Other runs re-fetch an overlapping seven-day
+window (including today), so delayed scrobbles and recent edits are reflected.
+Older edits are picked up on the next weekly refresh. Large histories take more API
 requests (up to 200 scrobbles per page). API failures fail the workflow before
 its commit step, preserving the previously published SVGs.
 
@@ -46,3 +48,16 @@ npm run generate
 ```
 
 API reference: https://www.last.fm/api/show/user.getRecentTracks
+
+## Build cache
+
+Images and exact-match Deezer artist lookups are cached for seven days in
+`.cache/lastfm.json`, persisted between Actions runs with `actions/cache`.
+Deezer uses its small image for the 40px portrait; SVGs still embed the image
+bytes so README rendering does not depend on external image requests.
+Concurrent requests for the same image are deduplicated. Failed downloads are
+not cached, and image requests time out after 15 seconds.
+
+A missing or invalid cache triggers a fresh download. History is separated by
+username and timezone. Delete the Actions cache (or local `.cache/`) to force
+a full refresh. Cached data contains images and daily counts, not API keys.
