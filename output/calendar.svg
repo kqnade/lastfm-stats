@@ -1,10 +1,10 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="808" height="224" viewBox="0 0 808 224" role="img" aria-labelledby="title description">
   <title id="title">k47de · Last.fm listening activity</title>
-  <desc id="description">49771 scrobbles from 2025-11-26 to 2026-11-25, grouped by Asia/Tokyo. Darker intensity levels indicate more scrobbles; the highest level is relative to the busiest day.</desc>
+  <desc id="description">49910 scrobbles from 2025-11-26 to 2026-11-25, grouped by Asia/Tokyo. Darker intensity levels indicate more scrobbles; the highest level is relative to the busiest day.</desc>
   <rect x="0.5" y="0.5" width="807" height="223" rx="10" fill="#0d1117" stroke="#30363d"/>
   <g font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="10" fill="#8b949e">
     <text x="18" y="28" fill="#ffffff" font-size="15" font-weight="600">Last.fm · Listening activity</text>
-    <text x="18" y="47">49,771 scrobbles in the last 365 days · k47de</text>
+    <text x="18" y="47">49,910 scrobbles in the last 365 days · k47de</text>
     <text x="62" y="66">Dec</text><text x="118" y="66">Jan</text><text x="188" y="66">Feb</text><text x="244" y="66">Mar</text><text x="300" y="66">Apr</text><text x="356" y="66">May</text><text x="426" y="66">Jun</text><text x="482" y="66">Jul</text><text x="538" y="66">Aug</text><text x="608" y="66">Sep</text><text x="664" y="66">Oct</text><text x="734" y="66">Nov</text><text x="16" y="99">Mon</text><text x="16" y="127">Wed</text><text x="16" y="155">Fri</text><rect x="48" y="118" width="11" height="11" rx="2" fill="#26a641"><title>2025-11-26: 203 scrobbles</title></rect>
 <rect x="48" y="132" width="11" height="11" rx="2" fill="#26a641"><title>2025-11-27: 212 scrobbles</title></rect>
 <rect x="48" y="146" width="11" height="11" rx="2" fill="#006d32"><title>2025-11-28: 153 scrobbles</title></rect>
@@ -369,7 +369,7 @@
 <rect x="776" y="76" width="11" height="11" rx="2" fill="#0e4429"><title>2026-11-22: 89 scrobbles</title></rect>
 <rect x="776" y="90" width="11" height="11" rx="2" fill="#26a641"><title>2026-11-23: 239 scrobbles</title></rect>
 <rect x="776" y="104" width="11" height="11" rx="2" fill="#006d32"><title>2026-11-24: 112 scrobbles</title></rect>
-<rect x="776" y="118" width="11" height="11" rx="2" fill="#0e4429"><title>2026-11-25: 13 scrobbles</title></rect>
+<rect x="776" y="118" width="11" height="11" rx="2" fill="#006d32"><title>2026-11-25: 152 scrobbles</title></rect>
     <text x="18" y="200">2025-11-26 – 2026-11-25 · Asia/Tokyo</text>
     <text x="648" y="199">Less</text><rect x="678" y="190" width="11" height="11" rx="2" fill="#161b22"></rect><rect x="692" y="190" width="11" height="11" rx="2" fill="#0e4429"></rect><rect x="706" y="190" width="11" height="11" rx="2" fill="#006d32"></rect><rect x="720" y="190" width="11" height="11" rx="2" fill="#26a641"></rect><rect x="734" y="190" width="11" height="11" rx="2" fill="#39d353"></rect><text x="756" y="199">More</text>
   </g>
